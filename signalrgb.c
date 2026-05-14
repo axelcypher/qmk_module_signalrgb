@@ -15,6 +15,11 @@ ASSERT_COMMUNITY_MODULES_MIN_API_VERSION(1,0,0);
 #include "color.h"
 #include "raw_hid.h"
 
+/* ---- custom implementation for effect hooks ---- */
+__attribute__((weak)) void signalrgb_overlay_rgb(uint8_t led, uint8_t *r, uint8_t *g, uint8_t *b);
+__attribute__((weak)) void signalrgb_on_stream_frame(void);
+/* ------------------------------------------------ */
+
 #if defined(RGBLIGHT_ENABLE) && defined(RGB_MATRIX_ENABLE)
     #define TOTAL_LEDS (RGBLIGHT_LED_COUNT + RGB_MATRIX_LED_COUNT)
     static const uint8_t RGBMATRIX_END = RGB_MATRIX_LED_COUNT;
@@ -62,6 +67,10 @@ void get_unique_identifier(void) //Grab the unique identifier for each specific 
 
 void led_streaming(uint8_t *data) //Stream data from HID Packets to Keyboard.
 {
+/* ---- custom implementation for effect hooks ---- */
+    signalrgb_on_stream_frame();
+/* ------------------------------------------------ */
+
     uint8_t index = data[1];
     uint8_t numberofleds = data[2]; 
     #if defined(RGBLIGHT_ENABLE)
@@ -131,6 +140,9 @@ void led_streaming(uint8_t *data) //Stream data from HID Packets to Keyboard.
       #if defined(RGBLIGHT_ENABLE)
       rgblight_setrgb_at(r, g, b, index + i);
       #elif defined(RGB_MATRIX_ENABLE)
+      /* ---- custom implementation for effect hooks ---- */
+      signalrgb_overlay_rgb(index + i, &r, &g, &b);
+      /* ------------------------------------------------ */
       rgb_matrix_set_color(index + i, r, g, b);
       #endif
         }
@@ -139,19 +151,14 @@ void led_streaming(uint8_t *data) //Stream data from HID Packets to Keyboard.
 
 void signalrgb_mode_enable(void)
 {
-    #if defined(RGB_MATRIX_ENABLE)
-    rgb_matrix_mode_noeeprom(RGB_MATRIX_CUSTOM_SIGNALRGB); //Set RGB Matrix to SignalRGB Compatible Mode
-    #endif
+    // keymap watchdog/housekeeping entscheidet den Zielmodus
 }
 
 void signalrgb_mode_disable(void)
 {
-    #if defined(RGBLIGHT_ENABLE)
-    rgblight_reload_from_eeprom();
-    #elif defined(RGB_MATRIX_ENABLE)
-    rgb_matrix_reload_from_eeprom(); //Reloading last effect from eeprom
-    #endif
+    // keymap watchdog/housekeeping entscheidet den Zielmodus
 }
+
 
 void get_total_leds(void)//Grab total number of leds that a board has.
 {
@@ -241,3 +248,8 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
     srgb_raw_hid_rx(data, length);
 }
 #endif
+
+/* ---- custom implementation for effect hooks ---- */
+__attribute__((weak)) void signalrgb_overlay_rgb(uint8_t led, uint8_t *r, uint8_t *g, uint8_t *b) {}
+__attribute__((weak)) void signalrgb_on_stream_frame(void) {}
+/* ------------------------------------------------ */
